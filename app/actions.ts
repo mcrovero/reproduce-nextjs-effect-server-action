@@ -1,5 +1,6 @@
 "use server";
 
+// mock function to simulate an async operation
 async function getData(input: number) {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return { data: "done " + input };
