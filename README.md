@@ -1,154 +1,45 @@
-## Next.js + Effect Server Actions: Compiler Limitation Reproduction
+This is a [Next.js](https://nextjs.org/) template to use when reporting a [bug in the Next.js repository](https://github.com/vercel/next.js/issues) with the `app/` directory.
 
-**Goal**: Demonstrate that the Next.js compiler currently rejects Promise-returning Server Actions unless they are declared as `async` functions directly. With the rising usage of `effect` that does not have async functions in the chain of function calls, it would be beneficial to allow Promise-returning Server Actions even when produced via higher-order functions. 
+## Getting Started
 
-- **Repo**: `nextjs-effect-server-action-repro`
-- **Next.js**: 15.5.2 (Turbopack)
-- **React**: 19.1.0
-- **effect**: ^3.17.13
+These are the steps you should follow when creating a bug report:
 
-### What this shows
+- Bug reports must be verified against the `next@canary` release. The canary version of Next.js ships daily and includes all features and fixes that have not been released to the stable version yet. Think of canary as a public beta. Some issues may already be fixed in the canary version, so please verify that your issue reproduces before opening a new issue. Issues not verified against `next@canary` will be closed after 30 days.
+- Make sure your issue is not a duplicate. Use the [GitHub issue search](https://github.com/vercel/next.js/issues) to see if there is already an open issue that matches yours. If that is the case, upvoting the other issue's first comment is desirable as we often prioritize issues based on the number of votes they receive. Note: Adding a "+1" or "same issue" comment without adding more context about the issue should be avoided. If you only find closed related issues, you can link to them using the issue number and `#`, eg.: `I found this related issue: #3000`.
+- If you think the issue is not in Next.js, the best place to ask for help is our [Discord community](https://nextjs.org/discord) or [GitHub discussions](https://github.com/vercel/next.js/discussions). Our community is welcoming and can often answer a project-related question faster than the Next.js core team.
+- Make the reproduction as minimal as possible. Try to exclude any code that does not help reproducing the issue. E.g. if you experience problems with Routing, including ESLint configurations or API routes aren't necessary. The less lines of code is to read through, the easier it is for the Next.js team to investigate. It may also help catching bugs in your codebase before publishing an issue.
+- Don't forget to create a new repository on GitHub and make it public so that anyone can view it and reproduce it.
 
-The file `app/actions.ts` contains multiple variants of Server Actions integrated with `effect`:
+## How to use this template
 
-- **`doSomethingNoWrapper`**: direct `Effect.runPromise(...)` call, but the export is not an `async` function → rejected.
-- **`doSomethingNoWrapperAync`**: same logic, but exported as an `async` function → accepted.
-- **`runEffectAction`**: a reusable wrapper that converts an `Effect` program into an `async` function returning a `Promise`.
-- **`doSomethingEffect`**: uses `runEffectAction` with a plain `Effect.promise(...)` program → rejected by the compiler despite the wrapper producing an async function.
-- **`doSomethingEffectFn` / `doSomethingEffectFnNoGenerator`**: use `Effect.fn(...)` for ergonomics, then wrap with `runEffectAction` → rejected by the compiler.
+Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init), [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/), or [pnpm](https://pnpm.io) to bootstrap the example:
 
-Key code (from `app/actions.ts`):
-
-```11:12:app/actions.ts
-export const doSomethingNoWrapper = (input: number) =>
-  Effect.promise(() => getData(input)).pipe(Effect.runPromise);
+```bash
+npx create-next-app --example reproduction-template reproduction-app
 ```
 
-```15:16:app/actions.ts
-export const doSomethingNoWrapperAync = async (input: number) =>
-  Effect.promise(() => getData(input)).pipe(Effect.runPromise);
+```bash
+yarn create next-app --example reproduction-template reproduction-app
 ```
 
-```20:26:app/actions.ts
-function runEffectAction<I, O, E>(
-  effectFn: (args: I) => Effect.Effect<O, E, never>
-) {
-  return async (args: I): Promise<O> => {
-    return await Effect.runPromise(effectFn(args));
-  };
-}
+```bash
+pnpm create next-app --example reproduction-template reproduction-app
 ```
 
-```28:30:app/actions.ts
-export const doSomethingEffect = runEffectAction((input: number) =>
-  Effect.promise(() => getData(input))
-);
-```
+## Learn More
 
-```39:47:app/actions.ts
-export const doSomethingEffectFn = runEffectAction(
-  Effect.fn(function* (input: number) {
-    return yield* Effect.promise(() => getData(input));
-  })
-);
+To learn more about Next.js, take a look at the following resources:
 
-export const doSomethingEffectFnNoGenerator = runEffectAction(
-  Effect.fn((input: number) => Effect.promise(() => getData(input)))
-);
-```
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [How to Contribute to Open Source (Next.js)](https://www.youtube.com/watch?v=cuoNzXFLitc) - a video tutorial by Lee Robinson
+- [Triaging in the Next.js repository](https://github.com/vercel/next.js/blob/canary/contributing.md#triaging) - how we work on issues
+- [CodeSandbox](https://codesandbox.io/s/github/vercel/next.js/tree/canary/examples/reproduction-template) - Edit this repository on CodeSandbox
 
-### Actual compiler behavior
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
 
-Exact output from dev/build:
+## Deployment
 
-```text
-○ Compiling / ...
- ✓ Compiled / in 2.3s
- ⨯ ./app/actions.ts:11:14
-Ecmascript file had an error
-   9 |
-  10 | // Simple execution not viable as a Server Action
-> 11 | export const doSomethingNoWrapper = (input: number) =>
-     |              ^^^^^^^^^^^^^^^^^^^^
-  12 |   Effect.promise(() => getData(input)).pipe(Effect.runPromise);
-  13 |
-  14 | // Workaround: async function
+If your reproduction needs to be deployed, the easiest way is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Server Actions must be async functions.
-
-
-
-
-./app/actions.ts:28:50
-Ecmascript file had an error
-  26 | }
-  27 |
-> 28 | export const doSomethingEffect = runEffectAction((input: number) =>
-     |                                                  ^^^^^^^^^^^^^^^^^^
-> 29 |   Effect.promise(() => getData(input))
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  30 | );
-  31 |
-  32 | /**
-
-Server Actions must be async functions.
-
-
-
-
-./app/actions.ts:40:13
-Ecmascript file had an error
-  38 |
-  39 | export const doSomethingEffectFn = runEffectAction(
-> 40 |   Effect.fn(function* (input: number) {
-     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 41 |     return yield* Effect.promise(() => getData(input));
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 42 |   })
-     | ^^^^
-  43 | );
-  44 |
-  45 | export const doSomethingEffectFnNoGenerator = runEffectAction(
-
-Server Actions must be async functions.
-
-
-
-
-./app/actions.ts:46:13
-Ecmascript file had an error
-  44 |
-  45 | export const doSomethingEffectFnNoGenerator = runEffectAction(
-> 46 |   Effect.fn((input: number) => Effect.promise(() => getData(input)))
-     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  47 | );
-  48 |
-
-Server Actions must be async functions.
-
-
-
- ○ Compiling /_error ...
- ✓ Compiled /_error in 735ms
- GET / 500 in 3175ms
-```
-
-### Expected behavior
-
-- As long as the exported binding is an `async` function returning a `Promise`, it should be accepted as a Server Action, regardless of whether it is produced by a higher-order function or uses `Effect.fn` internally.
-
-### Workarounds
-
-- Prefer a plain `async` function export. Avoid higher-order wrappers and `Effect.fn(...)` in the exported binding for now.
-- Example (works today):
-
-```15:16:app/actions.ts
-export const doSomethingNoWrapperAync = async (input: number) =>
-  Effect.promise(() => getData(input)).pipe(Effect.runPromise);
-```
-
-### How to reproduce
-
-1. Install dependencies: `pnpm install`
-2. Start dev server: `pnpm dev`
-3. Observe the compiler behavior described above.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
