@@ -1,6 +1,6 @@
 ## Next.js + Effect Server Actions: Compiler Limitation Reproduction
 
-**Goal**: Demonstrate that the Next.js compiler currently rejects Promise-returning Server Actions unless they are declared as `async` functions directly. With the rising usage of `effect`, it would be beneficial to allow Promise-returning Server Actions even when produced via higher-order functions.
+**Goal**: Demonstrate that the Next.js compiler currently rejects Promise-returning Server Actions unless they are declared as `async` functions directly. With the rising usage of `effect` that does not have async functions in the chain of function calls, it would be beneficial to allow Promise-returning Server Actions even when produced via higher-order functions. 
 
 - **Repo**: `nextjs-effect-server-action-repro`
 - **Next.js**: 15.5.2 (Turbopack)
@@ -151,9 +151,4 @@ export const doSomethingNoWrapperAync = async (input: number) =>
 
 1. Install dependencies: `pnpm install`
 2. Start dev server: `pnpm dev`
-   - or build: `pnpm build`
 3. Observe the compiler behavior described above.
-
-### Conclusion
-
-This repo demonstrates that the Next.js compiler currently rejects valid Server Actions when composed using `Effect.fn(...)`. A compiler improvement is required so that Server Actions created via higher-order wrappers and `effect` combinators are accepted as long as the exported binding is an `async` function.
